@@ -10,16 +10,13 @@ const app = express();
 // Render usa process.env.PORT; en local puedes caer a config.port o 8000
 const PORT = process.env.PORT || config.port || 8000;
 
-// Conexión DB
 connectDB();
 
-// Orígenes permitidos
 const allowedOrigins = [
   "http://localhost:5173",
   "https://pos-frontend-bajm.onrender.com",
 ];
 
-// CORS Options (se reutiliza en preflight)
 const corsOptions = {
   origin: function (origin, callback) {
     // Permite requests sin Origin (Postman, curl, health checks)
@@ -39,8 +36,15 @@ const corsOptions = {
 // Middlewares
 app.use(cors(corsOptions));
 
-// ✅ Preflight: evita "*" (causa crash con path-to-regexp en tu stack)
-app.options("/*", cors(corsOptions));
+// ✅ NO uses app.options("*" | "/*") en tu stack: rompe path-to-regexp.
+// Si quieres, puedes dejar un handler genérico de OPTIONS sin rutas:
+// (No suele ser necesario si cors() está arriba, pero ayuda en algunos casos.)
+app.use((req, res, next) => {
+  if (req.method === "OPTIONS") {
+    return res.sendStatus(204);
+  }
+  next();
+});
 
 app.use(express.json({ limit: "5mb" }));
 app.use(express.urlencoded({ extended: true, limit: "5mb" }));
@@ -58,10 +62,9 @@ app.use("/api/table", require("./routes/tableRoute"));
 app.use("/api/payment", require("./routes/paymentRoute"));
 app.use("/api/menu", require("./routes/menuRoute"));
 
-// Global Error Handler (siempre al final)
+// Global Error Handler
 app.use(globalErrorHandler);
 
-// Server
 app.listen(PORT, () => {
   console.log(`☑️ POS Server is listening on port ${PORT}`);
 });
