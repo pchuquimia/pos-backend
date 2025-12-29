@@ -4,19 +4,42 @@ const config = require("./config/config");
 const globalErrorHandler = require("./middlewares/globalErrorHandler");
 const cookieParser = require("cookie-parser");
 const cors = require("cors");
+
 const app = express();
 
-const PORT = config.port;
+// Render usa process.env.PORT; en local puedes caer a config.port o 8000
+const PORT = process.env.PORT || config.port || 8000;
+
 connectDB();
+
+const allowedOrigins = [
+  "http://localhost:5173",
+  "https://pos-frontend-bajm.onrender.com",
+];
 
 // Middlewares
 app.use(
   cors({
+    origin: function (origin, callback) {
+      // Permite requests sin Origin (Postman, curl, health checks)
+      if (!origin) return callback(null, true);
+
+      if (allowedOrigins.includes(origin)) {
+        return callback(null, true);
+      }
+
+      return callback(new Error(`CORS blocked for origin: ${origin}`));
+    },
     credentials: true,
-    origin: ["http://localhost:5173"],
+    methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"],
   })
 );
-app.use(express.json({ limit: "5mb" })); // parse incoming request in json format
+
+// Preflight (importante para CORS)
+app.options("*", cors());
+
+app.use(express.json({ limit: "5mb" }));
 app.use(express.urlencoded({ extended: true, limit: "5mb" }));
 app.use(cookieParser());
 
@@ -25,7 +48,7 @@ app.get("/", (req, res) => {
   res.json({ message: "Hello from POS Server!" });
 });
 
-// Other Endpoints
+// Routes
 app.use("/api/user", require("./routes/userRoute"));
 app.use("/api/order", require("./routes/orderRoute"));
 app.use("/api/table", require("./routes/tableRoute"));
@@ -39,46 +62,3 @@ app.use(globalErrorHandler);
 app.listen(PORT, () => {
   console.log(`☑️  POS Server is listening on port ${PORT}`);
 });
-
-/*
-const express = require("express");
-const connectDB = require("./config/database");
-const config = require("./config/config");
-const globalErrorHandler = require("./middlewares/globalErrorHandler");
-const cookieParser = require("cookie-parser");
-const cors = require("cors");
-const app = express();
-
-const PORT = config.port;
-connectDB();
-
-// Middlewares
-app.use(
-  cors({
-    credentials: true,
-    origin: ["http://localhost:5173"],
-  })
-);
-app.use(express.json()); // parse incoming request in json format
-app.use(cookieParser());
-
-// Root Endpoint
-app.get("/", (req, res) => {
-  res.json({ message: "Hello from POS Server!" });
-});
-
-// Other Endpoints
-app.use("/api/user", require("./routes/userRoute"));
-app.use("/api/order", require("./routes/orderRoute"));
-app.use("/api/table", require("./routes/tableRoute"));
-app.use("/api/payment", require("./routes/paymentRoute"));
-app.use("/api/menu", require("./routes/menuRoute"));
-
-// Global Error Handler
-app.use(globalErrorHandler);
-
-// Server
-app.listen(PORT, () => {
-  console.log(`☑️  POS Server is listening on port ${PORT}`);
-});
-*/
